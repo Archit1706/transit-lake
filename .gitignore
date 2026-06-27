@@ -1,0 +1,35 @@
+# Secrets
+.env
+.env.local
+
+# The data lake — raw + conformed parquet, never committed
+lake/
+*.duckdb
+*.duckdb.wal
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.uv/
+uv.lock
+
+# Dagster
+dagster_home/
+tmp*/
+.dagster/
+
+# dbt
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+.user.yml
+
+# Great Expectations local artifacts
+great_expectations/uncommitted/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
