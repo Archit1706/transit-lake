@@ -7,15 +7,14 @@ consume. This is the ingest-time DQ layer; dbt tests are the in-warehouse layer.
 from __future__ import annotations
 
 import os
-
-os.environ.setdefault("TQDM_DISABLE", "1")  # silence GE metric progress bars
-
 from typing import Any
 
-import pandas as pd
-
 import great_expectations as gx
+import pandas as pd
 from great_expectations import expectations as gxe
+
+# Silence GE metric progress bars (tqdm reads this when a bar is created).
+os.environ.setdefault("TQDM_DISABLE", "1")
 
 # Chicago bounding box (generous) for coordinate sanity checks.
 LAT_MIN, LAT_MAX = 41.0, 43.0
