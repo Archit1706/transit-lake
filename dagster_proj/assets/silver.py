@@ -8,10 +8,12 @@ schema with a shared mode/agency/route/delay vocabulary.
 dbt staging models build on these tables (see dbt sources).
 """
 import dagster as dg
+import polars as pl
 from dagster import AssetExecutionContext
 from dagster_duckdb import DuckDBResource
 
 from ingestion import config
+from ingestion import gtfs_rt_protobuf as pb
 
 SILVER_GROUP = "silver"
 
@@ -99,19 +101,57 @@ def silver_stop_times(context: AssetExecutionContext, duckdb: DuckDBResource) ->
 
 # --- Conformed real-time positions (bus + train) ---------------------------
 
+# Schema for the decoded GTFS-RT train records (empty polls still type cleanly).
+_TRAIN_PB_SCHEMA = {
+    "vehicle_id": pl.Utf8,
+    "route_id": pl.Utf8,
+    "lat": pl.Float64,
+    "lon": pl.Float64,
+    "heading": pl.Int32,
+    "is_delayed": pl.Boolean,
+    "stop_id": pl.Utf8,
+    "report_ts": pl.Datetime,
+}
+
+
+@dg.asset(group_name=SILVER_GROUP, deps=["cta_train_positions_bronze"], kinds={"python", "duckdb"})
+def silver_train_positions(context: AssetExecutionContext, duckdb: DuckDBResource) -> dg.MaterializeResult:
+    """Decode the canonical GTFS-RT train protobuf (via gtfs-realtime-bindings) into a table.
+
+    This is the load-bearing decode step: trains reach silver only by parsing the
+    `.pb` FeedMessages, not the raw JSON.
+    """
+    files = sorted(config.BRONZE.glob("cta/gtfs_rt/train_positions_pb/dt=*/*.pb"))
+    records: list[dict] = []
+    for f in files:
+        records.extend(pb.decode_feed(f.read_bytes()))
+    frame = pl.DataFrame(records, schema=_TRAIN_PB_SCHEMA)
+
+    with duckdb.get_connection() as conn:
+        conn.register("train_pb_df", frame.to_arrow())
+        conn.execute("""
+            CREATE OR REPLACE TABLE silver_train_positions AS
+            SELECT * FROM train_pb_df
+            QUALIFY row_number() OVER (PARTITION BY vehicle_id, report_ts ORDER BY report_ts) = 1
+        """)
+        rows = conn.execute("SELECT count(*) FROM silver_train_positions").fetchone()[0]
+    context.log.info(f"silver_train_positions: {rows:,} rows decoded from {len(files)} protobuf files")
+    return dg.MaterializeResult(metadata={"rows": rows, "protobuf_files": len(files)})
+
+
 @dg.asset(
     group_name=SILVER_GROUP,
-    deps=["cta_vehicle_positions_bronze", "cta_train_positions_bronze"],
+    deps=["cta_vehicle_positions_bronze", "silver_train_positions"],
     kinds={"duckdb"},
 )
 def silver_vehicle_positions(context: AssetExecutionContext, duckdb: DuckDBResource) -> dg.MaterializeResult:
-    """Union CTA bus + train real-time feeds into one conformed, deduped table.
+    """Union CTA bus (BusTime JSON) + train (decoded GTFS-RT protobuf) into one
+    conformed, deduped table.
 
     Dedup keeps one row per (mode, vehicle_id, report_ts) — repeated polls re-report
     the same timestamped position until the vehicle next moves.
     """
     bus = _glob("cta", "gtfs_rt", "vehicle_positions", "dt=*", "*.parquet")
-    train = _glob("cta", "train_tracker", "positions", "dt=*", "*.parquet")
     return _build(context, duckdb, "silver_vehicle_positions", f"""
         WITH unioned AS (
             SELECT 'CTA' AS agency, 'bus' AS mode,
@@ -121,10 +161,10 @@ def silver_vehicle_positions(context: AssetExecutionContext, duckdb: DuckDBResou
             FROM read_parquet('{bus}')
             UNION ALL
             SELECT 'CTA' AS agency, 'train' AS mode,
-                   rn AS vehicle_id, rt AS route_id, destNm AS headsign,
-                   lat, lon, heading, isDly AS is_delayed,
-                   tmstmp AS report_ts, _ingested_at
-            FROM read_parquet('{train}')
+                   vehicle_id, route_id, NULL AS headsign,
+                   lat, lon, heading, is_delayed,
+                   report_ts, report_ts AS _ingested_at
+            FROM silver_train_positions
         )
         SELECT * FROM unioned
         -- drop not-yet-positioned vehicles (trains report 0/0 until GPS locks)
