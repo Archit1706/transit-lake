@@ -1,8 +1,9 @@
 # 🚆 TransitLake
 
 A **Dagster-orchestrated medallion lakehouse** over Chicago multi-modal transit
-data. It ingests daily **GTFS** + live **GTFS-Realtime** (CTA bus & rail) + road
-**congestion** + **weather**, conforms them across agencies, models them into
+data. It ingests daily **GTFS** + live real-time vehicle positions (CTA **bus**
+via the BusTime JSON API, **rail** normalized to **GTFS-Realtime protobuf**) +
+road **congestion** + **weather**, conforms them across modes, models them into
 **dbt** dims/facts/marts on **DuckDB**, and enforces **100+ data-quality checks**
 across bronze→silver→gold. A Streamlit dashboard surfaces on-time performance,
 congestion hotspots, and delay↔weather/congestion analyses.
@@ -23,10 +24,12 @@ congestion hotspots, and delay↔weather/congestion analyses.
         │
   ┌─────▼──────────────────────────────────────────────────────────────┐
   │ BRONZE (raw, immutable, dated partitions)                           │
-  │   cta/gtfs_static · cta/gtfs_rt · cta/train_tracker                 │
-  │   socrata/congestion · socrata/adt · open_meteo/weather            │
+  │   cta/gtfs_static · cta/gtfs_rt/vehicle_positions (bus JSON)        │
+  │   cta/train_tracker (rail JSON) · cta/gtfs_rt/train_positions_pb    │
+  │   (rail GTFS-RT protobuf) · socrata/{congestion,adt} · open_meteo   │
   ├─────────────────────────────────────────────────────────────────────┤
-  │ SILVER (conformed)  typecast · dedupe · bus+train unified positions │
+  │ SILVER (conformed)  typecast · dedupe · decode rail GTFS-RT protobuf │
+  │   (gtfs-realtime-bindings) · bus+train unified positions            │
   ├─────────────────────────────────────────────────────────────────────┤
   │ GOLD (dbt)  dim_* · fact_* · mart_* (OTP, hotspots, delay↔weather)  │
   └─────────────────────────────────────────────────────────────────────┘
@@ -36,16 +39,18 @@ congestion hotspots, and delay↔weather/congestion analyses.
 ```
 
 The lake is **Parquet on disk**; **DuckDB** is the query engine; **dbt-duckdb**
-does the modeling. Zero-cost, fully local.
+does the modeling. The dbt models load into the **same Dagster asset graph** via
+`dagster-dbt`, so bronze→silver→staging→marts lineage (and dbt tests as asset
+checks) all show in one UI. Zero-cost, fully local.
 
 ## Tech stack
 
 | Layer | Tool |
 | --- | --- |
-| Orchestration | Dagster (software-defined assets, schedules, **asset checks**) |
+| Orchestration | Dagster (software-defined assets incl. dbt models via `dagster-dbt`, schedules, **asset checks**) |
 | Lake / engine | Parquet + DuckDB |
 | Transformation | dbt (dbt-duckdb) — staging → intermediate → marts |
-| Ingestion | Python + `requests`, `sodapy`, BusTime/Train Tracker APIs |
+| Ingestion | Python + `requests`, `sodapy`, BusTime/Train Tracker APIs, `gtfs-realtime-bindings` (rail protobuf) |
 | Data quality | Great Expectations (ingest) + dbt tests (warehouse) + Dagster asset checks |
 | Dashboard | Streamlit + Plotly |
 | CI | GitHub Actions — ruff, sqlfluff, dagster validate, `dbt build` |
@@ -110,10 +115,10 @@ uv run python -m scripts.demo_failing_check
 ## Repo layout
 
 ```
-ingestion/      # source clients (gtfs_static, gtfs_rt, socrata, weather, quality, poller)
-dagster_proj/   # assets (bronze, silver), resources, schedules, checks, definitions
+ingestion/      # source clients (gtfs_static, gtfs_rt, gtfs_rt_protobuf, socrata, weather, quality, poller)
+dagster_proj/   # assets (bronze, silver), dbt integration, resources, schedules, checks, definitions
 dbt/            # models (staging/intermediate/marts), macros, tests, profiles
 dashboard/      # Streamlit app
-scripts/        # CI bootstrap + the failing-check demo
+scripts/        # CI bootstrap · train→protobuf backfill · GIF render · failing-check demo
 lake/           # bronze/ silver/ + transitlake.duckdb  (gitignored)
 ```
