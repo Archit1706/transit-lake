@@ -10,10 +10,11 @@ import os
 
 os.environ.setdefault("TQDM_DISABLE", "1")  # silence GE metric progress bars
 
-from typing import Any, Callable
+from typing import Any
+
+import pandas as pd
 
 import great_expectations as gx
-import pandas as pd
 from great_expectations import expectations as gxe
 
 # Chicago bounding box (generous) for coordinate sanity checks.
