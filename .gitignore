@@ -6,6 +6,8 @@
 lake/
 *.duckdb
 *.duckdb.wal
+# ...except the small gold-marts snapshot the deployed dashboard reads
+!dashboard/marts.duckdb
 
 # Python
 .venv/
