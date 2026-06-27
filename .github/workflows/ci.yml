@@ -27,11 +27,14 @@ jobs:
         working-directory: dbt
         run: uv run sqlfluff lint models macros
 
-      - name: Validate Dagster definitions
-        run: uv run dagster definitions validate
-
       - name: Bootstrap empty silver tables
         run: uv run python -m scripts.ci_bootstrap_silver
+
+      - name: dbt parse (generate manifest for Dagster)
+        run: uv run dbt parse --profiles-dir dbt --project-dir dbt
+
+      - name: Validate Dagster definitions
+        run: uv run dagster definitions validate
 
       - name: dbt build (models + 90+ tests)
         run: uv run dbt build --profiles-dir dbt --project-dir dbt
