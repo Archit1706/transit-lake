@@ -2,6 +2,7 @@
 
 Run:  uv run streamlit run dashboard/app.py
 """
+import os
 from pathlib import Path
 
 import duckdb
@@ -9,7 +10,22 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-DB_PATH = Path(__file__).resolve().parent.parent / "lake" / "transitlake.duckdb"
+_HERE = Path(__file__).resolve().parent
+
+
+def _resolve_db() -> str:
+    """Prefer an explicit override, then the live local lake, then the bundled
+    marts snapshot (used on deployments where the full lake isn't present)."""
+    env = os.getenv("TRANSITLAKE_DB")
+    if env:
+        return env
+    live = _HERE.parent / "lake" / "transitlake.duckdb"
+    if live.exists():
+        return str(live)
+    return str(_HERE / "marts.duckdb")  # committed snapshot
+
+
+DB_PATH = _resolve_db()
 
 st.set_page_config(page_title="TransitLake", page_icon="🚆", layout="wide")
 
