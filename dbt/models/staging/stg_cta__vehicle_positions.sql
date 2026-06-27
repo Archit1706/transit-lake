@@ -18,5 +18,6 @@ select
     extract(hour from report_ts) as report_hour,
     _ingested_at
 from source
-where lat is not null
-  and lon is not null
+where
+    lat is not null
+    and lon is not null
