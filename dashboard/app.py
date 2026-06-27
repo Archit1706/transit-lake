@@ -110,7 +110,10 @@ with tab_weather:
         )
 
     st.subheader("Transit delay vs road congestion (by hour-of-day)")
-    dc = q("select report_hour, delayed_rate, road_avg_speed_mph from main_marts.mart_delay_vs_congestion order by report_hour")
+    dc = q("""
+        select report_hour, delayed_rate, road_avg_speed_mph
+        from main_marts.mart_delay_vs_congestion order by report_hour
+    """)
     if not dc.empty:
         st.plotly_chart(
             px.scatter(dc, x="road_avg_speed_mph", y="delayed_rate", hover_data=["report_hour"],
