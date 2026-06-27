@@ -11,7 +11,8 @@ Medallion layers: **bronze** (raw parquet, immutable, dated) → **silver**
 | `silver_stops` | one stop | `stop_id`, `stop_lat/lon`, `stop_name` |
 | `silver_trips` | one scheduled trip | `trip_id`, `route_id`, `service_id`, `direction_id` |
 | `silver_stop_times` | one scheduled stop event | `trip_id`, `stop_id`, `arrival_sec`, `stop_sequence` |
-| `silver_vehicle_positions` | one RT report (bus+train) | `mode`, `vehicle_id`, `route_id`, `lat/lon`, `is_delayed`, `report_ts` |
+| `silver_train_positions` | one rail RT report, **decoded from GTFS-RT protobuf** | `vehicle_id`, `route_id`, `lat/lon`, `heading`, `is_delayed`, `stop_id`, `report_ts` |
+| `silver_vehicle_positions` | one RT report (bus JSON + train protobuf), unified & deduped | `mode`, `vehicle_id`, `route_id`, `lat/lon`, `is_delayed`, `report_ts` |
 | `silver_congestion` | one segment×time observation | `segment_id`, `report_ts`, `speed_mph` |
 | `silver_weather` | one day | `weather_date`, temps, precip, snow, wind |
 
