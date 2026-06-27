@@ -1,6 +1,4 @@
 -- Transit mode dimension.
-select * from (
-    values
-        ('bus', 'Bus', 'CTA bus fleet (BusTime)'),
-        ('train', 'Rail', 'CTA "L" rail lines (Train Tracker)')
-) as t(mode, mode_name, description)
+select 'bus' as mode, 'Bus' as mode_name, 'CTA bus fleet (BusTime)' as description
+union all
+select 'train' as mode, 'Rail' as mode_name, 'CTA "L" rail lines (Train Tracker)' as description
