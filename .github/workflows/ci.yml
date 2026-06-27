@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --extra dev --extra dashboard
+
+      - name: Ruff (Python lint)
+        run: uv run ruff check ingestion dagster_proj dashboard scripts
+
+      - name: sqlfluff (SQL lint)
+        working-directory: dbt
+        run: uv run sqlfluff lint models macros
+
+      - name: Validate Dagster definitions
+        run: uv run dagster definitions validate
+
+      - name: Bootstrap empty silver tables
+        run: uv run python -m scripts.ci_bootstrap_silver
+
+      - name: dbt build (models + 90+ tests)
+        run: uv run dbt build --profiles-dir dbt --project-dir dbt
