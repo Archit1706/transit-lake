@@ -10,6 +10,12 @@ congestion hotspots, and delay↔weather/congestion analyses.
 > Built on a Chicago transit / GTFS domain background — so the gold marts don't
 > just move data, they **answer transportation questions**.
 
+![TransitLake dashboard preview](docs/dashboard.gif)
+
+> Preview frames are generated from the live marts via
+> [`scripts/make_dashboard_gif.py`](scripts/make_dashboard_gif.py); the interactive
+> app is `dashboard/app.py`.
+
 ## Architecture
 
 ```
