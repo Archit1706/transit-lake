@@ -11,10 +11,10 @@ from pathlib import Path
 
 import duckdb
 import matplotlib
-
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from PIL import Image
+
+matplotlib.use("Agg")  # headless rendering (no figures drawn yet)
 
 REPO = Path(__file__).resolve().parent.parent
 DB = REPO / "lake" / "transitlake.duckdb"
@@ -52,7 +52,10 @@ def _new():
 frames = []
 
 # Frame 1 — cover + metrics
-fresh = {r[0]: r for r in con.execute("select source, latest_ts, row_count from main_marts.mart_pipeline_freshness").fetchall()}
+_fresh_rows = con.execute(
+    "select source, latest_ts, row_count from main_marts.mart_pipeline_freshness"
+).fetchall()
+fresh = {r[0]: r for r in _fresh_rows}
 fig, ax = _new()
 ax.axis("off")
 ax.text(0.5, 0.86, "TransitLake", ha="center", fontsize=38, weight="bold", color=FG)
@@ -104,12 +107,15 @@ if fleet:
             ax.scatter(xs, ys, s=6, c=color, alpha=0.7, label=f"{mode} ({len(pts)})")
     ax.set_title("Live fleet — recent CTA vehicle positions", color=FG, fontsize=16, weight="bold", loc="left")
     ax.set_aspect("equal")
-    ax.set_xticks([]); ax.set_yticks([])
-    leg = ax.legend(loc="upper right", facecolor=BG, edgecolor="#2A2E37", labelcolor=FG)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.legend(loc="upper right", facecolor=BG, edgecolor="#2A2E37", labelcolor=FG)
     frames.append(fig_to_frame(fig))
 
 # Frame 4 — city-wide road speed by hour
-cbh = con.execute("select report_hour, avg_speed_mph from main_marts.mart_congestion_by_hour order by report_hour").fetchall()
+cbh = con.execute(
+    "select report_hour, avg_speed_mph from main_marts.mart_congestion_by_hour order by report_hour"
+).fetchall()
 if cbh:
     hrs = [r[0] for r in cbh]
     spd = [r[1] for r in cbh]
@@ -117,7 +123,8 @@ if cbh:
     ax.plot(hrs, spd, color=ACCENT, marker="o", linewidth=2)
     ax.fill_between(hrs, spd, min(spd) - 1, color=ACCENT, alpha=0.12)
     ax.set_title("City-wide average road speed by hour", color=FG, fontsize=16, weight="bold", loc="left")
-    ax.set_xlabel("Hour of day"); ax.set_ylabel("Avg speed (mph)")
+    ax.set_xlabel("Hour of day")
+    ax.set_ylabel("Avg speed (mph)")
     for s in ("top", "right"):
         ax.spines[s].set_visible(False)
     frames.append(fig_to_frame(fig))
