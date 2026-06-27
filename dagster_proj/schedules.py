@@ -8,21 +8,22 @@ import dagster as dg
 
 from dagster_proj.assets.bronze import (
     cta_gtfs_static_bronze,
+    cta_train_positions_bronze,
     cta_vehicle_positions_bronze,
     weather_bronze,
 )
 
-# Real-time vehicle positions: poll on a short interval (the volume driver).
+# Real-time positions (bus + train): poll on a short interval (the volume driver).
 rt_poll_job = dg.define_asset_job(
     "rt_poll_job",
-    selection=[cta_vehicle_positions_bronze],
+    selection=[cta_vehicle_positions_bronze, cta_train_positions_bronze],
     partitions_def=cta_vehicle_positions_bronze.partitions_def,
 )
 
 
 @dg.schedule(job=rt_poll_job, cron_schedule="*/2 * * * *")
 def rt_poll_schedule(context: dg.ScheduleEvaluationContext):
-    """Every 2 minutes, poll into today's partition."""
+    """Every 2 minutes, poll bus + train positions into today's partition."""
     today = context.scheduled_execution_time.strftime("%Y-%m-%d")
     return dg.RunRequest(partition_key=today)
 
