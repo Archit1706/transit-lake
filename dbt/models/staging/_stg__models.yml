@@ -1,0 +1,83 @@
+version: 2
+
+models:
+  - name: stg_cta__routes
+    description: One row per CTA bus route, with a human-readable route_type_name.
+    columns:
+      - name: route_id
+        tests: [not_null, unique]
+      - name: route_type_name
+        tests:
+          - accepted_values:
+              values: ['tram', 'subway', 'rail', 'bus', 'other']
+
+  - name: stg_cta__stops
+    description: CTA stops with valid coordinates.
+    columns:
+      - name: stop_id
+        tests: [not_null, unique]
+      - name: stop_lat
+        tests: [not_null]
+      - name: stop_lon
+        tests: [not_null]
+
+  - name: stg_cta__trips
+    description: CTA scheduled trips.
+    columns:
+      - name: trip_id
+        tests: [not_null, unique]
+      - name: route_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_cta__routes')
+              field: route_id
+
+  - name: stg_cta__stop_times
+    description: Scheduled stop events; arrival_sec handles GTFS times past 24h.
+    columns:
+      - name: trip_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_cta__trips')
+              field: trip_id
+      - name: stop_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_cta__stops')
+              field: stop_id
+      - name: scheduled_hour
+        tests:
+          - accepted_values:
+              values: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]
+              quote: false
+
+  - name: stg_cta__vehicle_positions
+    description: Conformed bus + train real-time position reports.
+    columns:
+      - name: position_sk
+        tests: [not_null, unique]
+      - name: mode
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['bus', 'train']
+      - name: report_ts
+        tests: [not_null]
+
+  - name: stg_chicago__congestion
+    description: Road-segment congestion observations.
+    columns:
+      - name: segment_id
+        tests: [not_null]
+      - name: speed_mph
+        tests:
+          - not_null
+
+  - name: stg_open_meteo__weather
+    description: Daily Chicago weather.
+    columns:
+      - name: weather_date
+        tests: [not_null, unique]
