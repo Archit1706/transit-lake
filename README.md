@@ -110,6 +110,7 @@ uv run python -m scripts.demo_failing_check
 
 - [Data sources & keys](docs/sources.md)
 - [Data dictionary](docs/data_dictionary.md)
+- [Deploying the dashboard free](docs/DEPLOY.md)
 - [Original build spec](docs/build_spec.md)
 
 ## Repo layout
