@@ -23,5 +23,6 @@ select
     p.report_hour
 from positions p
 left join routes r
-    on p.route_id = r.route_id
-    and p.mode = 'bus'
+    on
+        p.route_id = r.route_id
+        and p.mode = 'bus'
