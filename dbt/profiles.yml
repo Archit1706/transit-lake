@@ -1,0 +1,12 @@
+# Run dbt with --profiles-dir dbt  (or set DBT_PROFILES_DIR=dbt)
+transitlake:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      # Same DuckDB file the Dagster lake uses. Relative to where dbt is invoked (repo root).
+      path: "lake/transitlake.duckdb"
+      threads: 4
+      # Lets dbt-duckdb read the Parquet lake directly via external sources.
+      extensions:
+        - parquet
