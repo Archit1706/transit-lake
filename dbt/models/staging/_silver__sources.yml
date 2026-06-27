@@ -1,0 +1,15 @@
+version: 2
+
+sources:
+  - name: silver
+    description: Conformed silver tables built by Dagster in the DuckDB lake.
+    database: transitlake
+    schema: main
+    tables:
+      - name: silver_routes
+      - name: silver_stops
+      - name: silver_trips
+      - name: silver_stop_times
+      - name: silver_vehicle_positions
+      - name: silver_congestion
+      - name: silver_weather
