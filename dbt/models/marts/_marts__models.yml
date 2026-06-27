@@ -1,0 +1,131 @@
+version: 2
+
+models:
+  # --- Dimensions ---
+  - name: dim_date
+    description: Date spine 2018–2026.
+    columns:
+      - name: date_day
+        tests: [not_null, unique]
+      - name: date_key
+        tests: [not_null, unique]
+
+  - name: dim_agency
+    columns:
+      - name: agency
+        tests: [not_null, unique]
+
+  - name: dim_mode
+    columns:
+      - name: mode
+        tests:
+          - not_null
+          - unique
+          - accepted_values:
+              values: ['bus', 'train']
+
+  - name: dim_route
+    description: Bus + rail routes; covers every route id seen in the RT feeds.
+    columns:
+      - name: route_sk
+        tests: [not_null, unique]
+      - name: route_id
+        tests: [not_null]
+      - name: mode
+        tests:
+          - accepted_values:
+              values: ['bus', 'train']
+
+  - name: dim_stop
+    columns:
+      - name: stop_sk
+        tests: [not_null, unique]
+      - name: stop_id
+        tests: [not_null, unique]
+
+  - name: dim_segment
+    columns:
+      - name: segment_id
+        tests: [not_null, unique]
+      - name: segment_sk
+        tests: [not_null, unique]
+
+  # --- Facts (referential integrity to dims) ---
+  - name: fact_vehicle_position
+    description: One row per RT position report; the atomic transit fact.
+    columns:
+      - name: position_sk
+        tests: [not_null, unique]
+      - name: route_sk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_route')
+              field: route_sk
+      - name: date_key
+        tests:
+          - relationships:
+              to: ref('dim_date')
+              field: date_key
+      - name: mode
+        tests:
+          - accepted_values:
+              values: ['bus', 'train']
+
+  - name: fact_trip_delay
+    columns:
+      - name: position_sk
+        tests: [not_null, unique]
+      - name: route_sk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_route')
+              field: route_sk
+      - name: date_key
+        tests:
+          - relationships:
+              to: ref('dim_date')
+              field: date_key
+
+  - name: fact_congestion
+    columns:
+      - name: congestion_sk
+        tests: [not_null, unique]
+      - name: segment_sk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_segment')
+              field: segment_sk
+      - name: date_key
+        tests:
+          - relationships:
+              to: ref('dim_date')
+              field: date_key
+
+  - name: fact_weather_daily
+    columns:
+      - name: date_key
+        tests: [not_null, unique]
+      - name: weather_date
+        tests:
+          - relationships:
+              to: ref('dim_date')
+              field: date_day
+
+  # --- Analytics marts ---
+  - name: mart_otp_by_route
+    columns:
+      - name: route_id
+        tests: [not_null]
+  - name: mart_congestion_hotspots
+    columns:
+      - name: segment_id
+        tests: [not_null, unique]
+  - name: mart_delay_vs_weather
+    description: Daily transit delay rate joined to weather.
+  - name: mart_delay_vs_congestion
+    description: Transit delay vs road speed by hour-of-day profile.
+  - name: mart_pipeline_freshness
+    description: Latest timestamp and row count per fact source.
