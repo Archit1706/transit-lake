@@ -99,7 +99,11 @@ def silver_stop_times(context: AssetExecutionContext, duckdb: DuckDBResource) ->
 
 # --- Conformed real-time positions (bus + train) ---------------------------
 
-@dg.asset(group_name=SILVER_GROUP, deps=["cta_vehicle_positions_bronze", "cta_train_positions_bronze"], kinds={"duckdb"})
+@dg.asset(
+    group_name=SILVER_GROUP,
+    deps=["cta_vehicle_positions_bronze", "cta_train_positions_bronze"],
+    kinds={"duckdb"},
+)
 def silver_vehicle_positions(context: AssetExecutionContext, duckdb: DuckDBResource) -> dg.MaterializeResult:
     """Union CTA bus + train real-time feeds into one conformed, deduped table.
 
