@@ -4,8 +4,10 @@ transitlake:
   outputs:
     dev:
       type: duckdb
-      # Same DuckDB file the Dagster lake uses. Relative to where dbt is invoked (repo root).
-      path: "lake/transitlake.duckdb"
+      # Same DuckDB file the Dagster lake uses. Default is relative to the repo root
+      # (CLI/CI run dbt from there); Dagster sets TRANSITLAKE_DUCKDB to an absolute
+      # path since dagster-dbt runs dbt from the project dir.
+      path: "{{ env_var('TRANSITLAKE_DUCKDB', 'lake/transitlake.duckdb') }}"
       threads: 4
       # Lets dbt-duckdb read the Parquet lake directly via external sources.
       extensions:
