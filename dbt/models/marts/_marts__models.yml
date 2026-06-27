@@ -42,6 +42,12 @@ models:
         tests: [not_null, unique]
       - name: stop_id
         tests: [not_null, unique]
+      - name: stop_lat
+        tests:
+          - in_range: {min_value: 41, max_value: 43}
+      - name: stop_lon
+        tests:
+          - in_range: {min_value: -89, max_value: -87}
 
   - name: dim_segment
     columns:
@@ -49,6 +55,12 @@ models:
         tests: [not_null, unique]
       - name: segment_sk
         tests: [not_null, unique]
+      - name: start_lat
+        tests:
+          - in_range: {min_value: 41, max_value: 43}
+      - name: start_lon
+        tests:
+          - in_range: {min_value: -89, max_value: -87}
 
   # --- Facts (referential integrity to dims) ---
   - name: fact_vehicle_position
@@ -71,6 +83,15 @@ models:
         tests:
           - accepted_values:
               values: ['bus', 'train']
+      - name: lat
+        tests:
+          - in_range: {min_value: 41, max_value: 43}
+      - name: lon
+        tests:
+          - in_range: {min_value: -89, max_value: -87}
+      - name: report_hour
+        tests:
+          - in_range: {min_value: 0, max_value: 23}
 
   - name: fact_trip_delay
     columns:
@@ -103,6 +124,12 @@ models:
           - relationships:
               to: ref('dim_date')
               field: date_key
+      - name: speed_mph
+        tests:
+          - in_range: {min_value: 0, max_value: 80}
+      - name: report_hour
+        tests:
+          - in_range: {min_value: 0, max_value: 23}
 
   - name: fact_weather_daily
     columns:
@@ -113,19 +140,69 @@ models:
           - relationships:
               to: ref('dim_date')
               field: date_day
+      - name: temp_max_c
+        tests:
+          - in_range: {min_value: -40, max_value: 50}
+      - name: precip_mm
+        tests:
+          - in_range: {min_value: 0, max_value: 500}
 
   # --- Analytics marts ---
   - name: mart_otp_by_route
     columns:
       - name: route_id
         tests: [not_null]
+      - name: on_time_rate
+        tests:
+          - in_range: {min_value: 0, max_value: 1}
+  - name: mart_otp_by_mode_hour
+    columns:
+      - name: report_hour
+        tests:
+          - in_range: {min_value: 0, max_value: 23}
+      - name: on_time_rate
+        tests:
+          - in_range: {min_value: 0, max_value: 1}
+  - name: mart_otp_by_route_hour
+    columns:
+      - name: report_hour
+        tests:
+          - in_range: {min_value: 0, max_value: 23}
+      - name: on_time_rate
+        tests:
+          - in_range: {min_value: 0, max_value: 1}
   - name: mart_congestion_hotspots
     columns:
       - name: segment_id
         tests: [not_null, unique]
+      - name: avg_speed_mph
+        tests:
+          - in_range: {min_value: 0, max_value: 80}
+  - name: mart_congestion_by_hour
+    columns:
+      - name: report_hour
+        tests:
+          - not_null
+          - in_range: {min_value: 0, max_value: 23}
+      - name: avg_speed_mph
+        tests:
+          - in_range: {min_value: 0, max_value: 80}
+  - name: mart_daily_delay_trend
+    columns:
+      - name: delayed_rate
+        tests:
+          - in_range: {min_value: 0, max_value: 1}
   - name: mart_delay_vs_weather
     description: Daily transit delay rate joined to weather.
+    columns:
+      - name: delayed_rate
+        tests:
+          - in_range: {min_value: 0, max_value: 1}
   - name: mart_delay_vs_congestion
     description: Transit delay vs road speed by hour-of-day profile.
+    columns:
+      - name: report_hour
+        tests:
+          - in_range: {min_value: 0, max_value: 23}
   - name: mart_pipeline_freshness
     description: Latest timestamp and row count per fact source.
