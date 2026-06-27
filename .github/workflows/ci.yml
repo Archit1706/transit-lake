@@ -18,7 +18,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --extra dev --extra dashboard
+        run: uv sync --locked --extra dev --extra dashboard
 
       - name: Ruff (Python lint)
         run: uv run ruff check ingestion dagster_proj dashboard scripts
