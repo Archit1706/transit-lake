@@ -15,6 +15,6 @@ select
     count(*) as scheduled_departures,
     count(distinct st.trip_id) as distinct_trips
 from stop_times st
-join stops s using (stop_id)
+inner join stops s using (stop_id)
 group by 1, 2, 3, 4
 order by scheduled_departures desc
