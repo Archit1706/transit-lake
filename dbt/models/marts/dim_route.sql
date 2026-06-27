@@ -29,8 +29,9 @@ unioned as (
         null as route_color
     from seen s
     left join routes r
-        on s.route_id = r.route_id
-       and s.mode = 'bus'
+        on
+            s.route_id = r.route_id
+            and s.mode = 'bus'
     where r.route_id is null
 )
 
