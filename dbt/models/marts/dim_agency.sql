@@ -1,5 +1,6 @@
 -- Conformed agency dimension. CTA today; Metra/Pace are additive later.
-select * from (
-    values
-        ('CTA', 'Chicago Transit Authority', 'Chicago, IL', true)
-) as t(agency, agency_name, locale, is_active)
+select
+    'CTA' as agency,
+    'Chicago Transit Authority' as agency_name,
+    'Chicago, IL' as locale,
+    true as is_active
