@@ -24,6 +24,8 @@ import requests
 from ingestion import config
 
 BUSTIME_BASE = "https://www.ctabustracker.com/bustime/api/v2"
+TRAINTRACKER_BASE = "https://lapi.transitchicago.com/api/1.0"
+TRAIN_ROUTES = ["red", "blue", "brn", "g", "org", "p", "pink", "y"]
 ROUTES_PER_CALL = 10  # BusTime getvehicles accepts up to 10 routes per request
 REQUEST_TIMEOUT = 30
 
@@ -136,5 +138,93 @@ def poll_once() -> dict[str, Any]:
     return {"rows": frame.height, "routes": len(routes), "path": str(out)}
 
 
+# --- Train Tracker (all 8 rail lines in one call) -------------------------
+
+TRAIN_SCHEMA = {
+    "rn": pl.Utf8,           # run number (train id)
+    "rt": pl.Utf8,           # route / line name
+    "tmstmp": pl.Datetime,   # prediction-generated time (prdt)
+    "lat": pl.Float64,
+    "lon": pl.Float64,
+    "heading": pl.Int32,
+    "destNm": pl.Utf8,       # destination name
+    "destSt": pl.Utf8,       # destination stop id
+    "nextStaId": pl.Utf8,
+    "nextStaNm": pl.Utf8,
+    "nextStpId": pl.Utf8,
+    "arrT": pl.Datetime,     # predicted arrival at next stop
+    "isApp": pl.Boolean,     # approaching next stop
+    "isDly": pl.Boolean,     # delayed
+    "trDr": pl.Utf8,         # track/direction
+    "_ingested_at": pl.Datetime,
+}
+
+
+def fetch_trains() -> list[dict[str, Any]]:
+    """Fetch live positions for all rail lines; tag each train with its route name."""
+    params = {
+        "key": config.CTA_TRAIN_API_KEY,
+        "rt": ",".join(TRAIN_ROUTES),
+        "outputType": "JSON",
+    }
+    resp = requests.get(f"{TRAINTRACKER_BASE}/ttpositions.aspx", params=params, timeout=REQUEST_TIMEOUT)
+    resp.raise_for_status()
+    body = resp.json()["ctatt"]
+    records: list[dict[str, Any]] = []
+    for route in body.get("route", []):
+        trains = route.get("train", [])
+        if isinstance(trains, dict):  # single-train routes arrive as an object
+            trains = [trains]
+        for t in trains:
+            t = {**t, "rt": route.get("@name")}
+            records.append(t)
+    return records
+
+
+def _trains_to_frame(records: list[dict[str, Any]], ingested_at: dt.datetime) -> pl.DataFrame:
+    rows = []
+    for t in records:
+        rows.append(
+            {
+                "rn": t.get("rn"),
+                "rt": t.get("rt"),
+                "tmstmp": _parse_iso(t.get("prdt")),
+                "lat": _f(t.get("lat")),
+                "lon": _f(t.get("lon")),
+                "heading": _i(t.get("heading")),
+                "destNm": t.get("destNm"),
+                "destSt": t.get("destSt"),
+                "nextStaId": t.get("nextStaId"),
+                "nextStaNm": t.get("nextStaNm"),
+                "nextStpId": t.get("nextStpId"),
+                "arrT": _parse_iso(t.get("arrT")),
+                "isApp": t.get("isApp") == "1",
+                "isDly": t.get("isDly") == "1",
+                "trDr": t.get("trDr"),
+                "_ingested_at": ingested_at,
+            }
+        )
+    return pl.DataFrame(rows, schema=TRAIN_SCHEMA)
+
+
+def _parse_iso(s: str | None) -> dt.datetime | None:
+    if not s:
+        return None
+    return dt.datetime.fromisoformat(s)
+
+
+def poll_trains_once() -> dict[str, Any]:
+    """One train poll cycle: fetch all rail-line positions, write a dated bronze file."""
+    now = dt.datetime.now()
+    records = fetch_trains()
+    frame = _trains_to_frame(records, ingested_at=now)
+
+    part_dir = config.bronze_path("cta", "train_tracker/positions", f"dt={now:%Y-%m-%d}")
+    out = part_dir / f"trains_{now:%Y%m%dT%H%M%S}.parquet"
+    frame.write_parquet(out)
+    return {"rows": frame.height, "path": str(out)}
+
+
 if __name__ == "__main__":
-    print(poll_once())
+    print("bus:", poll_once())
+    print("train:", poll_trains_once())
