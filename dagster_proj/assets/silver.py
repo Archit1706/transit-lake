@@ -123,6 +123,9 @@ def silver_vehicle_positions(context: AssetExecutionContext, duckdb: DuckDBResou
             FROM read_parquet('{train}')
         )
         SELECT * FROM unioned
+        -- drop not-yet-positioned vehicles (trains report 0/0 until GPS locks)
+        WHERE lat BETWEEN 41.0 AND 43.0
+          AND lon BETWEEN -89.0 AND -87.0
         QUALIFY row_number() OVER (
             PARTITION BY mode, vehicle_id, report_ts ORDER BY _ingested_at
         ) = 1
