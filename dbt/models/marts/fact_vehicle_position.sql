@@ -1,0 +1,22 @@
+-- Atomic fact: one row per real-time vehicle position report (bus + train).
+with positions as (
+    select * from {{ ref('int_positions_enriched') }}
+)
+
+select
+    position_sk,
+    {{ surrogate_key(['mode', 'route_id']) }} as route_sk,
+    cast(strftime(report_ts, '%Y%m%d') as integer) as date_key,
+    agency,
+    mode,
+    route_id,
+    route_name,
+    vehicle_id,
+    lat,
+    lon,
+    heading,
+    is_delayed,
+    report_ts,
+    report_date,
+    report_hour
+from positions
