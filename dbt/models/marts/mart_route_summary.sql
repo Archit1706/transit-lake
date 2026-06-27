@@ -20,5 +20,6 @@ select
     o.on_time_rate
 from routes r
 left join otp o
-    on r.mode = o.mode
-   and r.route_id = o.route_id
+    on
+        r.mode = o.mode
+        and r.route_id = o.route_id
