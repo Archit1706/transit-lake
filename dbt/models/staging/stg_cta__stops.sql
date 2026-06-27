@@ -13,5 +13,6 @@ select
     parent_station,
     wheelchair_boarding
 from source
-where stop_lat is not null
-  and stop_lon is not null
+where
+    stop_lat is not null
+    and stop_lon is not null
