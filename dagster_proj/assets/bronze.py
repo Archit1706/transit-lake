@@ -49,6 +49,14 @@ def cta_vehicle_positions_bronze(context: AssetExecutionContext) -> dg.Materiali
 
 
 @dg.asset(group_name=BRONZE_GROUP, partitions_def=daily_partitions, kinds={"python", "parquet"})
+def cta_train_positions_bronze(context: AssetExecutionContext) -> dg.MaterializeResult:
+    """CTA live train positions (Train Tracker, all 8 lines) — one poll per materialization."""
+    result = gtfs_rt.poll_trains_once()
+    context.log.info(f"Polled {result['rows']} trains")
+    return dg.MaterializeResult(metadata={"train_rows": result["rows"], "path": result["path"]})
+
+
+@dg.asset(group_name=BRONZE_GROUP, partitions_def=daily_partitions, kinds={"python", "parquet"})
 def weather_bronze(context: AssetExecutionContext) -> dg.MaterializeResult:
     """Open-Meteo daily weather for Chicago for the partition date (archive lags ~5 days)."""
     day = dt.date.fromisoformat(context.partition_key)
