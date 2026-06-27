@@ -214,7 +214,10 @@ def _parse_iso(s: str | None) -> dt.datetime | None:
 
 
 def poll_trains_once() -> dict[str, Any]:
-    """One train poll cycle: fetch all rail-line positions, write a dated bronze file."""
+    """One train poll cycle: write the raw JSON parquet AND the canonical GTFS-RT
+    protobuf from a single fetch."""
+    from ingestion import gtfs_rt_protobuf as pb
+
     now = dt.datetime.now()
     records = fetch_trains()
     frame = _trains_to_frame(records, ingested_at=now)
@@ -222,7 +225,14 @@ def poll_trains_once() -> dict[str, Any]:
     part_dir = config.bronze_path("cta", "train_tracker/positions", f"dt={now:%Y-%m-%d}")
     out = part_dir / f"trains_{now:%Y%m%dT%H%M%S}.parquet"
     frame.write_parquet(out)
-    return {"rows": frame.height, "path": str(out)}
+
+    # Canonical GTFS-RT artifact (decoded back with the bindings in silver).
+    raw = pb.encode_trains((pb.normalize_live(r) for r in records), header_ts=now)
+    pb_dir = config.bronze_path("cta", "gtfs_rt/train_positions_pb", f"dt={now:%Y-%m-%d}")
+    pb_out = pb_dir / f"trains_{now:%Y%m%dT%H%M%S}.pb"
+    pb_out.write_bytes(raw)
+
+    return {"rows": frame.height, "path": str(out), "pb_path": str(pb_out), "pb_bytes": len(raw)}
 
 
 if __name__ == "__main__":
