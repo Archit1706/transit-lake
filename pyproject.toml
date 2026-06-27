@@ -23,12 +23,11 @@ dependencies = [
     "gtfs-realtime-bindings>=1.0",
     "protobuf>=4.25",
     "python-dotenv>=1.0",
+    # Data quality — used by the Dagster asset checks, so part of the core env.
+    "great-expectations>=1.0",
 ]
 
 [project.optional-dependencies]
-quality = [
-    "great-expectations>=1.0",
-]
 dashboard = [
     "streamlit>=1.40",
     "plotly>=5.24",
@@ -49,3 +48,14 @@ packages = ["dagster_proj", "ingestion"]
 [tool.dagster]
 module_name = "dagster_proj.definitions"
 code_location_name = "transitlake"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+# GE progress bars are silenced via os.environ before the GE import.
+"ingestion/quality.py" = ["E402"]
