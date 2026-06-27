@@ -7,7 +7,7 @@ the same data is never re-fetched (respects rate limits / ToS).
 | --- | --- | --- | --- | --- |
 | CTA | Static GTFS (`google_transit.zip`) | ZIP of CSVs, direct download | no | `cta/gtfs_static/dt=…/` |
 | CTA | Bus real-time positions (BusTime `getvehicles`) | JSON API | **yes** (Bus Tracker) | `cta/gtfs_rt/vehicle_positions/dt=…/` |
-| CTA | Train real-time positions (Train Tracker `ttpositions`) | JSON API | **yes** (Train Tracker) | `cta/train_tracker/positions/dt=…/` |
+| CTA | Train real-time positions (Train Tracker `ttpositions`) | JSON API | **yes** (Train Tracker) | `cta/train_tracker/positions/dt=…/` (raw JSON) + `cta/gtfs_rt/train_positions_pb/dt=…/` (GTFS-RT protobuf) |
 | Chicago Data Portal | Historical congestion by segment (`sxs8-h27x`, ~275M rows) | Socrata API | optional token | `socrata/congestion/` |
 | Chicago Data Portal | Average Daily Traffic counts (`pfsx-4n4m`) | Socrata API | optional token | `socrata/adt/` |
 | Open-Meteo | Daily historical weather (Chicago) | JSON | no | `open_meteo/weather_daily/` |
@@ -30,7 +30,16 @@ See [.env.example](../.env.example). Register at:
   capped (~10k req/day), so the poller defaults to a 120s interval
   (`CTA_RT_POLL_SECONDS`), which still lands ~1M+ rows/day.
 - **Trains** come from the **Train Tracker** `ttpositions` API — all 8 rail lines
-  in a single call, with an `isDly` delay flag.
+  in a single call, with an `isDly` delay flag. CTA publishes no native train
+  protobuf either, so each poll is **normalized to a canonical GTFS-RT
+  `FeedMessage`** (`VehiclePosition` entities) with `gtfs-realtime-bindings` and
+  landed as a `.pb` bronze artifact; silver **decodes that protobuf** back with
+  the same bindings (`silver_train_positions`), so the protobuf is on the critical
+  path, not decorative. See `ingestion/gtfs_rt_protobuf.py`. One mapping note:
+  `VehiclePosition` has no schedule-delay field, so the `isDly` boolean rides
+  `congestion_level` (CONGESTION vs RUNNING_SMOOTHLY) and decodes back; headsign
+  isn't a `VehiclePosition` field, so it is null for trains in silver. Existing
+  train JSON history was re-encoded via `scripts/backfill_train_protobuf.py`.
 - **Congestion `sxs8-h27x`** is the 2011–2018 historical segment series. The live
   RT feed and this slice don't share a calendar window, so the multi-modal
   `mart_delay_vs_congestion` correlates on **hour-of-day profile**, not date.
