@@ -1,5 +1,11 @@
 # 🚆 TransitLake
 
+[![Live demo](https://img.shields.io/badge/live_demo-transitlake.vercel.app-000?logo=vercel&logoColor=white)](https://transitlake.vercel.app)
+[![CI](https://github.com/Archit1706/transit-lake/actions/workflows/ci.yml/badge.svg)](https://github.com/Archit1706/transit-lake/actions/workflows/ci.yml)
+
+**Live demo → [transitlake.vercel.app](https://transitlake.vercel.app)** — the gold
+marts queried in your browser with DuckDB-WASM.
+
 A **Dagster-orchestrated medallion lakehouse** over Chicago multi-modal transit
 data. It ingests daily **GTFS** + live real-time vehicle positions (CTA **bus**
 via the BusTime JSON API, **rail** normalized to **GTFS-Realtime protobuf**) +
