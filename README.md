@@ -52,7 +52,7 @@ checks) all show in one UI. Zero-cost, fully local.
 | Transformation | dbt (dbt-duckdb) — staging → intermediate → marts |
 | Ingestion | Python + `requests`, `sodapy`, BusTime/Train Tracker APIs, `gtfs-realtime-bindings` (rail protobuf) |
 | Data quality | Great Expectations (ingest) + dbt tests (warehouse) + Dagster asset checks |
-| Dashboard | Streamlit + Plotly |
+| Dashboard | Streamlit + Plotly (Python) · **Next.js + DuckDB-WASM** (in-browser SQL) on Vercel |
 | CI | GitHub Actions — ruff, sqlfluff, dagster validate, `dbt build` |
 
 ## Quickstart
@@ -119,7 +119,8 @@ uv run python -m scripts.demo_failing_check
 ingestion/      # source clients (gtfs_static, gtfs_rt, gtfs_rt_protobuf, socrata, weather, quality, poller)
 dagster_proj/   # assets (bronze, silver), dbt integration, resources, schedules, checks, definitions
 dbt/            # models (staging/intermediate/marts), macros, tests, profiles
-dashboard/      # Streamlit app
-scripts/        # CI bootstrap · train→protobuf backfill · GIF render · failing-check demo
+dashboard/      # Streamlit app (+ committed marts snapshot)
+frontend/       # Next.js app — queries marts Parquet in-browser via DuckDB-WASM (Vercel)
+scripts/        # CI bootstrap · backfills · marts exports (snapshot + parquet) · GIF · demo
 lake/           # bronze/ silver/ + transitlake.duckdb  (gitignored)
 ```
