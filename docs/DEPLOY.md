@@ -31,6 +31,25 @@ Streamlit Cloud redeploys automatically on push.
 
 No secrets are needed: the app reads the bundled snapshot, hits no APIs.
 
+## Next.js frontend on Vercel (free)
+
+The repo also ships a Next.js dashboard in [`frontend/`](../frontend) that runs
+**SQL in the browser with DuckDB-WASM** over Parquet exports of the marts — a
+fully static site, no backend.
+
+1. Export the marts to Parquet (writes `frontend/public/data/*.parquet`):
+   ```bash
+   uv run python -m scripts.export_marts_parquet
+   git add frontend/public/data && git commit -m "data: refresh frontend marts" && git push
+   ```
+2. Go to <https://vercel.com/new> → import `Archit1706/transit-lake`.
+3. Set **Root Directory = `frontend`** (Next.js auto-detected). No env vars needed.
+4. Deploy. Vercel redeploys on every push.
+
+The DuckDB-WASM runtime loads from a CDN at runtime; the Parquet files are served
+as static assets. Same refresh model as the Streamlit snapshot — data is frozen
+at export time.
+
 ## Other platforms
 
 - **Hugging Face Spaces** — create a *Streamlit* Space, push this repo; add the
